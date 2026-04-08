@@ -114,3 +114,39 @@ class PromoCodeUsage(models.Model):
 
     def __str__(self) -> str:
         return f"User {self.user_id} used {self.promo_code_id}"
+
+
+class MailingStatus(models.TextChoices):
+    PENDING = "pending", "Pending"
+    SENDING = "sending", "Sending"
+    SENT    = "sent",    "Sent"
+    FAILED  = "failed",  "Failed"
+
+
+class MailingRecord(models.Model):
+    # Idempotency key: unique identifier in the external system.
+    external_id = models.CharField(max_length=255, unique=True, db_index=True)
+
+    user_id = models.PositiveIntegerField()
+    email   = models.EmailField()
+    subject = models.CharField(max_length=998)  # RFC 2822 subject line limit
+    message = models.TextField()
+
+    status     = models.CharField(
+        max_length=10,
+        choices=MailingStatus.choices,
+        default=MailingStatus.PENDING,
+        db_index=True,
+    )
+    error      = models.TextField(blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["id"]
+        verbose_name = "Mailing Record"
+        verbose_name_plural = "Mailing Records"
+
+    def __str__(self) -> str:
+        return f"[{self.status}] {self.external_id} → {self.email}"
